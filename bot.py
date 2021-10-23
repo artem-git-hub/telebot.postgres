@@ -113,7 +113,6 @@ def cmd_start(message):
 def accept_message(message):
     global user_road
     if message.from_user.id in return_list(select_db("user_id", "admin", "")):
-        print(message.from_user.id in return_list(select_db("user_id", "admin", "")))
         if message.from_user.first_name is None:
             first_name = ""
         else:
@@ -281,7 +280,6 @@ def edit_password_admin(message):
 def super_menu(message):
     buttons = []
     extra_buttons = []
-    print(Redactor.operation)
     with lock:
         Redactor.type = select_db("type", "admin", f"user_id = {message.from_user.id}")[0][0]
     if Redactor.type == "admin":
@@ -390,7 +388,6 @@ def super_menu(message):
                     else:
                         try:
                             manager_id_support = select_db("user_id", "admin", f"type = 'manager'")[0][0]
-                            print("sdfasdfas")
                             update_db("settings", "value", f"'{manager_id_support}'", f"name = 'support'")
                         except IndexError:
                             manager_id_support = select_db("user_id", "admin", "")[0][0]
@@ -465,7 +462,6 @@ def super_menu(message):
     elif Redactor.operation == "edit_info":
         if message.text != "Отмена":
             info = [message.text][0].replace("\n", "/\n")
-            print(info)
             update_db("settings", "value", f'"{info}"', "name = 'info'")
             info = select_db("value", "settings", f"name = 'info'")[0][0].replace("/\n", "\n")
             bot.send_message(message.from_user.id, "<code>Сейчас информация: </code>\n\n" + info, parse_mode="html")
@@ -526,10 +522,8 @@ def super_menu(message):
                 # global manager_id
                 reg(manager_id, message.text, "manager")
                 list_clients = select_db("user_id, username", "clients", "")
-                print(list_clients)
                 for i in list_clients:
                     if i[0] == manager_id:
-                        print(i[0], manager_id, i[1])
                         update_db("admin", "username", f"'{i[1]}'", f"user_id = {manager_id}")
                 bot.send_message(message.from_user.id, show_manager_list()[:-2], parse_mode="html")
         Redactor.operation = "show"
