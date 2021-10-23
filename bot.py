@@ -1,7 +1,4 @@
-import hashlib
 import logging
-import os
-import sqlite3
 import sys
 import telebot
 from telebot import types
@@ -95,9 +92,7 @@ def cmd_start(message):
         dt_created = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
         if not select_db("_id", "clients", f"user_id = {message.from_user.id}"):
-            cursor.execute("INSERT INTO clients VALUES(?, ?, ?, ?, ?, ?, ?, ?);",
-                           (None, user_id, username, None, None, None, None, dt_created))
-            db.commit()
+            insert_db("clients", ("user_id", "username", "fio", "phone", "city", "address", "date_registration"), (user_id, username, "", "", "", "", dt_created))
         else:
             update_db("clients", "username", f"'{message.from_user.username}'",
                       f"user_id = {message.from_user.id}")
@@ -922,7 +917,7 @@ try:
                         cursor.execute(
                             f"""DELETE FROM baskets WHERE product_id = {id_product} AND user_id = {user_id};""")
                         db.commit()
-except sqlite3.Error as e:
+except psycopg2.Error as e:
     pass
 
 
