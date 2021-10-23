@@ -104,7 +104,7 @@ def select_db(whatis="*", fromis="baskets", whereis=''):
 
 def insert_db(name_table,column ,values):
     column = str(column).replace("'", "")
-    print(f"""INSERT INTO {name_table} {column} VALUES{values};""")
+    # print(f"""INSERT INTO {name_table} {column} VALUES{values};""")
     cursor.execute(
         f"""INSERT INTO {name_table} {column} VALUES{values};"""
     )
