@@ -118,7 +118,6 @@ def delete_db(name_table, where):
 
 
 def update_db(name_table, column, value, whereis):
-    # print(f"""UPDATE {name_table} SET {column} = {value} WHERE {whereis}""")
     cursor.execute(
         f"""UPDATE {name_table} SET {column} = {value} WHERE {whereis}""")
     db.commit()
