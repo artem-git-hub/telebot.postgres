@@ -87,6 +87,10 @@ def cmd_start(message):
     if message.text == "/start" or "/restart":
         user_id = str(message.chat.id)
         username = message.from_user.username
+        if username == None:
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True).add("/start")
+            bot.send_message(message.from_user.id, "Создайте в настройках телеграмм аккаунта себе имя пользователя\nЭто нужно для того чтобы менеджер смог вам написать", reply_markup=markup)
+            return
         from datetime import datetime
 
         dt_created = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
