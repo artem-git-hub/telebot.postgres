@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/artem/Desktop/Python/python_proect/work/3_db/t/venv"
+VIRTUAL_ENV="/home/artem/Desktop/Python/python_proect/bot-shop/telebot_postgres/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

@@ -150,6 +150,7 @@ sortedcontainers==2.1.0
 soupsieve==2.2.1
 SQLAlchemy==1.4.20
 SQLAlchemy-Utils==0.37.8
+supervisor==4.1.0
 systemd-python==234
 telebot==0.0.4
 tenacity==6.0.0
