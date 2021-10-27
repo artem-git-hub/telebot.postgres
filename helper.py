@@ -104,7 +104,7 @@ def select_db(whatis="*", fromis="baskets", whereis=''):
 
 def insert_db(name_table,column ,values):
     column = str(column).replace("'", "")
-    # print(f"""INSERT INTO {name_table} {column} VALUES{values};""")
+    print(f"""INSERT INTO {name_table} {column} VALUES{values};""")
     cursor.execute(
         f"""INSERT INTO {name_table} {column} VALUES{values};"""
     )
@@ -118,14 +118,15 @@ def delete_db(name_table, where):
 
 
 def update_db(name_table, column, value, whereis):
+    print(f"""UPDATE {name_table} SET {column} = {value} WHERE {whereis};""")
     cursor.execute(
-        f"""UPDATE {name_table} SET {column} = {value} WHERE {whereis}""")
+        f"""UPDATE {name_table} SET {column} = {value} WHERE {whereis};""")
     db.commit()
 
 
 def update_admin(name_table="admin", column="", value="", whereis=""):
     cursor.execute(
-        f"""UPDATE {name_table} SET {column} = {value} WHERE {whereis}""")
+        f"""UPDATE {name_table} SET {column} = {value} WHERE {whereis};""")
     db.commit()
 
 
