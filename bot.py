@@ -4,7 +4,6 @@ import telebot
 from telebot import types
 import threading
 
-
 from config import *
 import psycopg2
 
@@ -91,14 +90,17 @@ def cmd_start(message):
         username = message.from_user.username
         if username == None:
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True).add("/start")
-            bot.send_message(message.from_user.id, "Создайте в настройках телеграмм аккаунта себе имя пользователя\nЭто нужно для того чтобы менеджер смог вам написать", reply_markup=markup)
+            bot.send_message(message.from_user.id,
+                             "Создайте в настройках телеграмм аккаунта себе имя пользователя\nЭто нужно для того чтобы менеджер смог вам написать",
+                             reply_markup=markup)
             return
         from datetime import datetime
 
         dt_created = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
         if not select_db("_id", "clients", f"user_id = {message.from_user.id}"):
-            insert_db("clients", ("user_id", "username", "fio", "phone", "city", "address", "date_registration"), (user_id, username, "", "", "", "", dt_created))
+            insert_db("clients", ("user_id", "username", "fio", "phone", "city", "address", "date_registration"),
+                      (user_id, username, "", "", "", "", dt_created))
         else:
             update_db("clients", "username", f"'{message.from_user.username}'",
                       f"user_id = {message.from_user.id}")
@@ -166,9 +168,10 @@ def accept_message(message):
         user_road = user_road[:-1]
         do_order(message)
     elif message.text == "🛍 Корзина":
+        bot.send_message(message.from_user.id, "<b>Ваша корзина</b>", reply_markup=None, parse_mode="html")
         show_basket(message)
     elif message.text == "👤 Профиль" or message.text == "Заполнить профиль":
-        show_profile(message)
+        show_profile(message, "edit")
     elif message.text == "Редактировать профиль":
         edit_profile(message)
     elif message.text == "/" + select_db("*", "settings", "name = 'key_word'")[0][2]:
@@ -195,11 +198,6 @@ def accept_message(message):
         cmd_start(message)
 
 
-
-
-
-
-
 def add_data_to_admin(message):
     if message.from_user.id in return_list(select_db("user_id", "admin", "")):
         if message.from_user.first_name is None:
@@ -213,13 +211,6 @@ def add_data_to_admin(message):
         fullname = first_name + "  " + last_name
         update_db("admin", "username", f"'{message.from_user.username}'", f"user_id = {message.from_user.id}")
         update_db("admin", "name", f"'{fullname}'", f"user_id = {message.from_user.id}")
-
-
-
-
-
-
-
 
 
 def get_info(message):
@@ -435,7 +426,7 @@ def super_menu(message):
                     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1).add("Отмена")
                     bot.send_message(message.from_user.id, "Введи текущий пароль", reply_markup=markup)
                     Redactor.operation, Redactor.type = "password edit", select_db("type", "admin",
-                                                                                      f"user_id = {message.from_user.id}")
+                                                                                   f"user_id = {message.from_user.id}")
 
                     bot.register_next_step_handler(message, who_you)
                 elif message.text == extra_buttons[6]:
@@ -459,7 +450,8 @@ def super_menu(message):
             try:
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1).add("Отмена")
                 bot.send_message(message.from_user.id,
-                                 "Кто теперь будет менеджером по заказом\n\n<b>введи число</b>\n\n" + show_manager_list("yes"),
+                                 "Кто теперь будет менеджером по заказом\n\n<b>введи число</b>\n\n" + show_manager_list(
+                                     "yes"),
                                  reply_markup=markup, parse_mode="html")
                 bot.register_next_step_handler(message, edit_order_manager)
             except TypeError:
@@ -793,9 +785,24 @@ def edit_profile(message):
             message.chat.id, dictionary[message.text][0], reply_markup=markup)
         bot.register_next_step_handler(message, edit_cat_profile)
     elif message.text == "👤 Профиль":
-        show_profile(message)
+        if "" not in select_db("*", "clients", whereis=f"user_id = {message.chat.id}")[0][2:] and select_db("product_id", "baskets", f"user_id = {message.from_user.id}") != []:
+            show_profile(message, "show")
+            markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+            markup.add("Редактировать профиль", "🛍 Корзина", "⏺В главное меню")
+            bot.send_message(message.chat.id, "Профиль полностью заполнен! Вы уже можете сделать заказ",
+                             parse_mode="html", reply_markup=markup)
+            bot.register_next_step_handler(message, accept_message)
+
+        elif "" not in select_db("*", "clients", whereis=f"user_id = {message.chat.id}")[0][2:]:
+            show_profile(message, "show")
+            markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+            markup.add("Редактировать профиль", "📁 Каталог", "⏺В главное меню")
+            bot.send_message(message.chat.id, "Вы уже можете сделать заказ",
+                             parse_mode="html", reply_markup=markup)
+            bot.register_next_step_handler(message, accept_message)
+        else:
+            show_profile(message, "edit")
     else:
-        show_profile(message)
         markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
         for i in buttons:
             markup.add(types.KeyboardButton(text=i[0]), types.KeyboardButton(text=i[1]))
@@ -821,19 +828,22 @@ def edit_cat_profile(message):
         edit_profile(message)
 
 
-def show_profile(message):
+def show_profile(message, sh_or_ed):
     profile = select_db(
         "*", "clients", f"user_id = '{message.chat.id}'")
-    fio = profile[0][3] if profile[0][3] is not None else "<code>не указано</code>"
-    phone_number = profile[0][4] if profile[0][4] is not None else "<code>не указан</code>"
-    city = profile[0][5] if profile[0][5] is not None else "<code>не указан</code>"
-    address = profile[0][6] if profile[0][6] is not None else "<code>не указан</code>"
+    fio = profile[0][3] if profile[0][3] != "" else "<code>не указано</code>"
+    phone_number = profile[0][4] if profile[0][4] != "" else "<code>не указан</code>"
+    city = profile[0][5] if profile[0][5] !="" else "<code>не указан</code>"
+    address = profile[0][6] if profile[0][6] != "" else "<code>не указан</code>"
     text = f"""ФИО: {fio}\nНомер : {phone_number}\nГород : {city}\nАдрес : {address}"""
-    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add(types.KeyboardButton(
-        text="Редактировать профиль"), types.KeyboardButton(text="⏺В главное меню"))
-    bot.send_message(message.chat.id, text, parse_mode="html",
-                     reply_markup=markup)
+    if sh_or_ed == "edit":
+        markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+        markup.add(types.KeyboardButton(
+            text="Редактировать профиль"), types.KeyboardButton(text="⏺В главное меню"))
+        bot.send_message(message.chat.id, text, parse_mode="html",
+                         reply_markup=markup)
+    elif sh_or_ed == "show":
+        bot.send_message(message.chat.id, text, parse_mode="html")
 
 
 def show_basket(message):
@@ -1049,7 +1059,8 @@ def data(call):
         show_basket(call.message)
 
     elif call.data == "complete":
-        if None not in select_db("*", "clients", whereis=f"user_id = {call.message.chat.id}")[0][2:]:
+        print(select_db("*", "clients", whereis=f"user_id = {call.message.chat.id}")[0][2:])
+        if "" not in select_db("*", "clients", whereis=f"user_id = {call.message.chat.id}")[0][2:]:
             basket = select_db(
                 "*", "baskets", f"user_id = {call.message.chat.id}")
             user_basket = ""
@@ -1080,12 +1091,10 @@ def data(call):
                 row_width=2, resize_keyboard=True)
             markup.add(types.KeyboardButton(text="⏺В главное меню"))
             bot.edit_message_media(media=types.InputMedia(type='photo', media=new_photo,
-                                                          caption="Заказ оформлен, скоро с вами свяжется менеджер "
-                                                                  "для отправки вам кода отслеживания"),
+                                                          caption="Заказ оформлен, скоро с вами свяжется менеджер для отправки вам кода отслеживания"),
                                    chat_id=call.message.chat.id,
                                    message_id=call.message.message_id)  # , reply_markup=markup)
             # todo: зачем тебе строка ниже? она не несёт никакого смысла
-            tablename = "user_" + str(call.message.chat.id)
             cursor.execute(f"""DELETE FROM baskets WHERE user_id={call.message.chat.id}""")
             db.commit()
         else:
@@ -1505,7 +1514,7 @@ def do_order(message):
 
 
 def check_and_delete(message):
-    insert_db("for_delete_product",("user_id", "message_id") ,(message.chat.id, message.message_id + 1))
+    insert_db("for_delete_product", ("user_id", "message_id"), (message.chat.id, message.message_id + 1))
     last_message = select_db("*", "for_delete_product", f"user_id = {message.chat.id}")
     if len(last_message) > 1:
         cursor.execute(
