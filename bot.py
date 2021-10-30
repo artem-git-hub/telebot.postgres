@@ -51,9 +51,9 @@ class Redactor:
 def delete_message():
     data_data = select_db("*", "for_delete_product")
     for i in data_data:
+        bot.delete_message(chat_id=i[1], message_id=i[2])
         cursor.execute(f"DELETE FROM for_delete_product WHERE user_id = {i[1]}")
         db.commit()
-        bot.delete_message(chat_id=i[1], message_id=i[2])
 
 
 @bot.message_handler(commands=['start', 'restart', 'help'])
@@ -124,7 +124,7 @@ def accept_message(message):
     if message.text == "📁 Каталог":
         user_road = ["1"]
         do_order(message)
-    elif message.text == "⏺В главное меню":
+    elif message.text == "⏺ В главное меню":
         user_road = ["1"]
         cmd_start(message)
     elif message.text == "/givemeadmin":
@@ -224,7 +224,7 @@ def activate_admin(message):
     keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     manager = types.KeyboardButton("Я менеджер")
     admin = types.KeyboardButton("Я администратор")
-    home = types.KeyboardButton("⏺В главное меню")
+    home = types.KeyboardButton("⏺ В главное меню")
     keyboard.row(admin, manager)
     keyboard.row(home)
     bot.send_message(message.chat.id, "Какой твой уровень доступа", reply_markup=keyboard)
@@ -242,7 +242,7 @@ def who_you(message):
             Redactor.operation = "extra_edit"
             super_menu(message)
             Redactor.access = "no"
-    elif message.text == "⏺В главное меню":
+    elif message.text == "⏺ В главное меню":
         accept_message(message)
     elif "Я" in message.text:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -788,7 +788,7 @@ def edit_profile(message):
         if "" not in select_db("*", "clients", whereis=f"user_id = {message.chat.id}")[0][2:] and select_db("product_id", "baskets", f"user_id = {message.from_user.id}") != []:
             show_profile(message, "show")
             markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-            markup.add("Редактировать профиль", "🛍 Корзина", "⏺В главное меню")
+            markup.add("Редактировать профиль", "🛍 Корзина", "⏺ В главное меню")
             bot.send_message(message.chat.id, "Профиль полностью заполнен! Вы уже можете сделать заказ",
                              parse_mode="html", reply_markup=markup)
             bot.register_next_step_handler(message, accept_message)
@@ -796,7 +796,7 @@ def edit_profile(message):
         elif "" not in select_db("*", "clients", whereis=f"user_id = {message.chat.id}")[0][2:]:
             show_profile(message, "show")
             markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-            markup.add("Редактировать профиль", "📁 Каталог", "⏺В главное меню")
+            markup.add("Редактировать профиль", "📁 Каталог", "⏺ В главное меню")
             bot.send_message(message.chat.id, "Вы уже можете сделать заказ",
                              parse_mode="html", reply_markup=markup)
             bot.register_next_step_handler(message, accept_message)
@@ -839,7 +839,7 @@ def show_profile(message, sh_or_ed):
     if sh_or_ed == "edit":
         markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
         markup.add(types.KeyboardButton(
-            text="Редактировать профиль"), types.KeyboardButton(text="⏺В главное меню"))
+            text="Редактировать профиль"), types.KeyboardButton(text="⏺ В главное меню"))
         bot.send_message(message.chat.id, text, parse_mode="html",
                          reply_markup=markup)
     elif sh_or_ed == "show":
@@ -882,18 +882,22 @@ def show_basket(message):
                        parse_mode="html")
     elif show_product_id > max_id:
         show_product_id = minimum
+        show_basket(message)
 
     elif show_product_id < minimum:
         show_product_id = max_id
+        show_basket(message)
 
 
 def button_basket(summ, show_product_id, basket):
     clear = types.InlineKeyboardButton(
         '✖️', callback_data='basket_clear')
     remove = types.InlineKeyboardButton(
-        '➖', callback_data='basket_remove')
+        '➖', callback_data='basket_remove_1')
     add = types.InlineKeyboardButton(
-        '➕', callback_data='basket_add')
+        '➕', callback_data='basket_add_1')
+    more = types.InlineKeyboardButton(
+        '⏬', callback_data='more')
 
     previous = types.InlineKeyboardButton(
         '◀️', callback_data='basket_previous')
@@ -908,6 +912,7 @@ def button_basket(summ, show_product_id, basket):
         'Добавить ещё товар', callback_data='additionally')
 
     markup.row(clear, remove, add)
+    # markup.row(more)
     markup.row(previous, from_is, next)
     markup.row(complete)
     markup.row(additionally)
@@ -915,41 +920,40 @@ def button_basket(summ, show_product_id, basket):
 
 
 try:
-    def edit_basket(user_id, id_parents_categories, id_product, what_do):
+    def edit_basket(user_id, id_parents_categories, id_product, what_do, how_many):
         global last_product
         title = last_product
-        if title != "":
-            if id_product == 0:
-                id_product = return_one_value(
-                    select_db("_id", "product",
-                              "title = '{}' AND id_categories = '{}'".format(title, id_parents_categories)))
-            if id_product:
-                select_amount = return_one_value(
-                    select_db("amount", "baskets", f"""product_id = {id_product} AND user_id = {user_id}"""))
+        if id_product == 0:
+            id_product = return_one_value(
+                select_db("_id", "product",
+                          "title = '{}' AND id_categories = '{}'".format(title, id_parents_categories)))
+        if id_product:
+            select_amount = return_one_value(
+                select_db("amount", "baskets", f"""product_id = {id_product} AND user_id = {user_id}"""))
+        else:
+            return
+        if id_product != 0:
+            if select_amount is None:
+                insert_db("baskets", ("user_id", "product_id", "amount"), (user_id, id_product, 1))
             else:
-                return
-            if id_product:
-                if select_amount is None:
-                    insert_db("baskets", ("user_id", "product_id", "amount"), (user_id, id_product, 1))
-                else:
-                    amount = select_amount
-                    if what_do != "x":
-                        if what_do == "+":
-                            amount += 1
-                        elif what_do == "-":
-                            amount -= 1
-                        update_db("baskets", "amount", amount, f"product_id = {id_product} AND user_id = {user_id};")
-                        if amount <= 0:
-                            cursor.execute(
-                                f"""DELETE FROM baskets WHERE product_id = {id_product} AND user_id = {user_id};""")
-                            db.commit()
-
-                    else:
+                amount = select_amount
+                if what_do != "x":
+                    if what_do == "+":
+                        amount += how_many
+                    if what_do == "-":
+                        amount -= how_many
+                    update_db("baskets", "amount", amount, f"product_id = {id_product} AND user_id = {user_id};")
+                    if amount <= 0:
                         cursor.execute(
                             f"""DELETE FROM baskets WHERE product_id = {id_product} AND user_id = {user_id};""")
                         db.commit()
+
+                else:
+                    cursor.execute(
+                        f"""DELETE FROM baskets WHERE product_id = {id_product} AND user_id = {user_id};""")
+                    db.commit()
 except psycopg2.Error as e:
-    pass
+    print(e)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -959,7 +963,7 @@ def data(call):
     if "me" in call.data:
         pass
     elif call.data == "add":
-        edit_basket(call.message.chat.id, int(user_road[-1]), 0, "+")
+        edit_basket(call.message.chat.id, int(user_road[-1]), 0, "+", 1)
         global last_product
         title = last_product
 
@@ -1000,7 +1004,6 @@ def data(call):
 
         elif "previous" in call.data:
             show_product_id -= 1
-
         if show_product_id < minimum_id:
             show_product_id = max_id
         elif show_product_id > max_id:
@@ -1016,15 +1019,21 @@ def data(call):
 
         basket = select_db("*", "baskets", f"user_id = {call.message.chat.id}")
         basket_ar(basket, call.message)
+        print(basket)
         if "add" in call.data:
-            edit_basket(call.message.chat.id, 0, about_product[0][0], "+")
+            how_many = int(call.data[11:])
+            edit_basket(call.message.chat.id, 0, about_product[0][0], "+", how_many)
+
         elif "remove" in call.data:
-            edit_basket(call.message.chat.id, 0, about_product[0][0], "-")
+            how_many = int(call.data[14:])
+            edit_basket(call.message.chat.id, 0, about_product[0][0], "-", how_many)
+
         elif "clear" in call.data:
-            edit_basket(call.message.chat.id, 0, about_product[0][0], "x")
+            edit_basket(call.message.chat.id, 0, about_product[0][0], "x", "all")
 
         basket = select_db(
             "*", "baskets", f"user_id = {call.message.chat.id}")
+        print(basket)
         max_id = len(basket)
         basket_ar(basket, call.message)
         if show_product_id < minimum_id:
@@ -1059,7 +1068,6 @@ def data(call):
         show_basket(call.message)
 
     elif call.data == "complete":
-        print(select_db("*", "clients", whereis=f"user_id = {call.message.chat.id}")[0][2:])
         if "" not in select_db("*", "clients", whereis=f"user_id = {call.message.chat.id}")[0][2:]:
             basket = select_db(
                 "*", "baskets", f"user_id = {call.message.chat.id}")
@@ -1089,7 +1097,7 @@ def data(call):
             new_photo = open("photo/complete.png", 'rb')
             markup = types.ReplyKeyboardMarkup(
                 row_width=2, resize_keyboard=True)
-            markup.add(types.KeyboardButton(text="⏺В главное меню"))
+            markup.add(types.KeyboardButton(text="⏺ В главное меню"))
             bot.edit_message_media(media=types.InputMedia(type='photo', media=new_photo,
                                                           caption="Заказ оформлен, скоро с вами свяжется менеджер для отправки вам кода отслеживания"),
                                    chat_id=call.message.chat.id,
@@ -1480,9 +1488,9 @@ def do_order(message):
                 button_name = types.KeyboardButton(i)
                 markup.add(button_name)
             if int(sum_element_in_list(user_road)) > 1:
-                markup.add("⏺В главное меню", "< Назад")
+                markup.add("⏺ В главное меню", "< Назад")
             else:
-                markup.add("⏺В главное меню")
+                markup.add("⏺ В главное меню")
             if Redactor.type != "user":
                 markup.add("-" * 40)
                 markup.add("Добавить\nкатегорию", "Переименовать\nкатегорию", "Удалить\nкатегорию")
@@ -1493,7 +1501,7 @@ def do_order(message):
             for i in product(user_category):
                 button_name = types.KeyboardButton(i)
                 markup.add(button_name)
-            markup.add("⏺В главное меню", "< Назад")
+            markup.add("⏺ В главное меню", "< Назад")
             text = "Выбери продукт"
             if Redactor.type != "user":
                 markup.add("-" * 40)

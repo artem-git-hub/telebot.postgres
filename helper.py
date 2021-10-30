@@ -95,10 +95,11 @@ def insert_admin(name_table, column, values):
 
 def select_db(whatis="*", fromis="baskets", whereis=''):
     if whereis == "":
-        cursor.execute("""SELECT {} FROM {};""".format(whatis, fromis))
+        cursor.execute("""SELECT {} FROM {} ORDER BY _id ASC;""".format(whatis, fromis))
     else:
+        # print("""SELECT {} FROM {} WHERE {};""".format(whatis, fromis, whereis))
         cursor.execute(
-            """SELECT {} FROM {} WHERE {};""".format(whatis, fromis, whereis))
+            """SELECT {} FROM {} WHERE {} ORDER BY _id ASC;""".format(whatis, fromis, whereis))
     return cursor.fetchall()
 
 
