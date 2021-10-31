@@ -785,7 +785,8 @@ def edit_profile(message):
             message.chat.id, dictionary[message.text][0], reply_markup=markup)
         bot.register_next_step_handler(message, edit_cat_profile)
     elif message.text == "👤 Профиль":
-        if "" not in select_db("*", "clients", whereis=f"user_id = {message.chat.id}")[0][2:] and select_db("product_id", "baskets", f"user_id = {message.from_user.id}") != []:
+        if "" not in select_db("*", "clients", whereis=f"user_id = {message.chat.id}")[0][2:] and select_db(
+                "product_id", "baskets", f"user_id = {message.from_user.id}") != []:
             show_profile(message, "show")
             markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
             markup.add("Редактировать профиль", "🛍 Корзина", "⏺ В главное меню")
@@ -833,7 +834,7 @@ def show_profile(message, sh_or_ed):
         "*", "clients", f"user_id = '{message.chat.id}'")
     fio = profile[0][3] if profile[0][3] != "" else "<code>не указано</code>"
     phone_number = profile[0][4] if profile[0][4] != "" else "<code>не указан</code>"
-    city = profile[0][5] if profile[0][5] !="" else "<code>не указан</code>"
+    city = profile[0][5] if profile[0][5] != "" else "<code>не указан</code>"
     address = profile[0][6] if profile[0][6] != "" else "<code>не указан</code>"
     text = f"""ФИО: {fio}\nНомер : {phone_number}\nГород : {city}\nАдрес : {address}"""
     if sh_or_ed == "edit":
@@ -889,15 +890,42 @@ def show_basket(message):
         show_basket(message)
 
 
+level_added = 2
+
+
 def button_basket(summ, show_product_id, basket):
-    clear = types.InlineKeyboardButton(
-        '✖️', callback_data='basket_clear')
-    remove = types.InlineKeyboardButton(
-        '➖', callback_data='basket_remove_1')
-    add = types.InlineKeyboardButton(
-        '➕', callback_data='basket_add_1')
-    more = types.InlineKeyboardButton(
-        '⏬', callback_data='more')
+    global level_added
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    level_added_local = 0
+    level_red = [1, 5, 25, 150, 500]
+    while level_added_local != level_added:
+        clear = types.InlineKeyboardButton(
+            '✖️', callback_data='basket_clear')
+        basket_more = types.InlineKeyboardButton(
+            '⏬', callback_data='basket_more')
+        call_remove = 'basket_remove_' + str(level_red[level_added_local])
+        call_add = 'basket_add_' + str(level_red[level_added_local])
+        remove = types.InlineKeyboardButton("- " + str(level_red[level_added_local]),
+                                            callback_data='basket_remove_' + str(level_red[level_added_local]))
+        add = types.InlineKeyboardButton("+ " + str(level_red[level_added_local]),
+                                         callback_data='basket_add_' + str(level_red[level_added_local]))
+
+        if level_added_local + 1 == level_added and level_added_local == 0:
+
+            remove = types.InlineKeyboardButton('➖', callback_data=call_remove)
+            add = types.InlineKeyboardButton('➕', callback_data=call_add)
+            markup.row(basket_more, clear, remove, add)
+        elif level_added_local == 0:
+            remove = types.InlineKeyboardButton('➖', callback_data=call_remove)
+            add = types.InlineKeyboardButton('➕', callback_data=call_add)
+            markup.row(clear, remove, add)
+        elif level_added_local + 1 == level_added:
+            markup.row(basket_more, remove, add)
+        else:
+            # remove = types.InlineKeyboardButton("- " + str(level_added_local), callback_data='basket_remove_' + str(level_added_local))
+            # add = types.InlineKeyboardButton("+ " + str(level_added_local), callback_data='basket_add_' + str(level_added_local))
+            markup.row(remove, add)
+        level_added_local += 1
 
     previous = types.InlineKeyboardButton(
         '◀️', callback_data='basket_previous')
@@ -905,14 +933,11 @@ def button_basket(summ, show_product_id, basket):
         f'{show_product_id} / {len(basket)}', callback_data='a')
     next = types.InlineKeyboardButton(
         '▶️', callback_data='basket_next')
-    markup = types.InlineKeyboardMarkup(row_width=1)
     complete = types.InlineKeyboardButton(
         f'Сделать заказ на {summ} ₽', callback_data='complete')
     additionally = types.InlineKeyboardButton(
         'Добавить ещё товар', callback_data='additionally')
 
-    markup.row(clear, remove, add)
-    # markup.row(more)
     markup.row(previous, from_is, next)
     markup.row(complete)
     markup.row(additionally)
@@ -1016,10 +1041,24 @@ def data(call):
                 "*", "product", f"_id = {basket[show_product_id - 1][2]}")
         minimum_id = 1
         max_id = len(basket)
+        global level_added
+        if "more" in call.data:
+            level_added += 1
+            if level_added > 5:
+                level_added = 1
+            if level_added < 1:
+                level_added = 5
+            summ = 0
+            for i in basket:
+                summ += i[3] * select_db(
+                    "*", "product", f"_id = {i[2]}")[0][3]
+            bot.edit_message_reply_markup(chat_id=call.message.chat.id,
+                                          message_id=call.message.message_id,
+                                          reply_markup=button_basket(summ, show_product_id, basket))
 
         basket = select_db("*", "baskets", f"user_id = {call.message.chat.id}")
         basket_ar(basket, call.message)
-        print(basket)
+
         if "add" in call.data:
             how_many = int(call.data[11:])
             edit_basket(call.message.chat.id, 0, about_product[0][0], "+", how_many)
@@ -1033,7 +1072,7 @@ def data(call):
 
         basket = select_db(
             "*", "baskets", f"user_id = {call.message.chat.id}")
-        print(basket)
+
         max_id = len(basket)
         basket_ar(basket, call.message)
         if show_product_id < minimum_id:
